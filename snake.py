@@ -1,11 +1,11 @@
+#Autor: Guilherme Milan Santos
 #Baseado no jogo de snake em https://github.com/korolvs/snake_nn/
 
 import curses
-from curses import wrapper
 from random import randint
 import sys
 import time
-import tensorflow
+import tflearn
 
 class SnakeState:
 	def __init__(self, board_width=20, board_height = 20, param_dir='left'):
@@ -111,6 +111,8 @@ class SnakeState:
 		self.snake.insert(0, new_part)#cria novo ponto da cobra no comeco
 		self.collision_detection()
 
+	def get_ai_context(self):
+		return 0
 
 class SnakeUI:
 	def __init__(self, state, keyboard='t', stdscr=None):
@@ -128,8 +130,8 @@ class SnakeUI:
 		curses.flushinp()
 
 		#if(self.keyboard):
-		if(keyboard == 't')
-			self.window.nodelay(1)
+		self.window.nodelay(1)
+		if(keyboard == 't'):
 			self.window.keypad(1)
 			self.window.nodelay(True)
 		#wrapper(self.set_stdscr)
