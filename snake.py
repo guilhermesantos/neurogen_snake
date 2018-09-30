@@ -5,20 +5,19 @@ import curses
 from random import randint
 import sys
 import time
-import tflearn
+#import tflearn
 
 class SnakeState:
-	def __init__(self, board_width=20, board_height = 20, param_dir='left'):
+	def __init__(self, bw=20, bh = 20, param_dir='left'):
 		self.dirs = {'up':0, 'down':1, 'left':2, 'right':3}
 		self.direction = self.dirs[param_dir]
 		self.food = {}
 		self.num = 0
 		self.score = 0
 		self.game_over = False
-		self.board = {'width': board_width, 'height': board_height}
+		self.board = {'width': bw, 'height': bh}
 		self.snake = []
-		#starting_x = randint(5, board_width-5)
-		#starting_y = randint(5, board_height-5)
+
 		starting_x = 5
 		starting_y = 5
 
@@ -175,18 +174,17 @@ class SnakeUI:
 		#substitui state e renderiza janela de novo
 		return 0
 
-def ui_game_loop(param_dir='left', update_freq=10, render_freq=10):
+def ui_game_loop(param_dir='left', update_freq=10, render_freq=10, bw=20, bh=20):
 	return 0
 
-def invisible_game_loop(param_dir='left', update_freq=10, render_freq=10):
+def invisible_game_loop(param_dir='left', update_freq=10, render_freq=10, bw=20, bh=20):
 	return 0
 
-def game_loop(param_dir='left', ui_mode='t', update_freq=10, render_freq=10, keyboard='t'):
-	snake_state = SnakeState(param_dir=param_dir)
+def game_loop(param_dir='left', ui_mode='t', update_freq=10, render_freq=10, keyboard='t', bw=20, bh=20):
+	snake_state = SnakeState(param_dir=param_dir, bw=bw, bh=bh)
 	
 	if(ui_mode == 't'):
 		snake_ui = SnakeUI(state=snake_state, keyboard=keyboard)
-		#wrapper(snake_ui.set_stdscr)
 
 		time_between_updates = 1/update_freq
 		time_between_renders = 1/render_freq
@@ -254,6 +252,12 @@ def parse_cl_args():
 			args['rf'] = int(arguments[i+1])
 		elif(arguments[i] == '-kb'):
 			args['kb'] = arguments[i+1]
+		elif(arguments[i] == '-bw'):
+			args['bw'] = int(arguments[i+1])
+		elif(arguments[i] == '-bh'):
+			args['bh'] = int(arguments[i+1])
+
+	#IMPLEMENTAR ARG BW E BH
 
 	if('dir' not in args.keys()):
 		args['dir'] = 'left'
@@ -265,6 +269,10 @@ def parse_cl_args():
 		args['rf'] = 10
 	if('kb' not in args.keys()):
 		args['kb'] = 't'
+	if('bw' not in args.keys()):
+		args['bw'] = 20
+	if('bh' not in args.keys()):
+		args['bh'] = 20
 
 	return args
 		
@@ -272,11 +280,12 @@ def parse_cl_args():
 def main():
 	args = parse_cl_args()
 	if(args['ui'] == 't'):
-		ui_game_loop(param_dir=args['dir'], update_freq=args['uf'], render_freq=args['rf'])
+		ui_game_loop(param_dir=args['dir'], update_freq=args['uf'], 
+			render_freq=args['rf'], bw=args['bw'], bh=args['bh'])
 	else:
 		invisible_game_loop(param_dir=args['dir'], update_freq=args['uf'], render_freq=args['rf'])
 
 	game_loop(param_dir=args['dir'], ui_mode=args['ui'], 
-		update_freq=args['uf'], render_freq=args['rf'], keyboard=args['kb'])
+		update_freq=args['uf'], render_freq=args['rf'], keyboard=args['kb'], bw=args['bw'], bh=args['bh'])
 
 main()
