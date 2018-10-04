@@ -5,7 +5,18 @@ import curses
 from random import randint
 import sys
 import time
+from enum import Enum
 #import tflearn
+
+class Direction(Enum):
+	UP = 0
+	DOWN = 1
+	LEFT = 2
+	RIGHT = 3
+
+class InputMode(Enum):
+	KEYBOARD = 0
+	NEURAL_NET	 = 1
 
 class SnakeState:
 	def __init__(self, bw=20, bh = 20, param_dir='left'):
@@ -110,57 +121,84 @@ class SnakeState:
 		self.snake.insert(0, new_part)#cria novo ponto da cobra no comeco
 		self.collision_detection()
 
-	def get_ai_context(self):
-		return 0
+	def get_game_info(self):
+		obstacle_ahead = ((self.direction == self.dirs['right'] and self.snake[0]['x']+1 == self.board['width']-1)
+			or (self.direction == self.dirs['left'] and self.snake[0]['x']-1 == 0) 
+			or (self.direction == self.dirs['up'] and self.snake[0]['y']-1 == 0)
+			or (self.direction == self.dirs['down'] and self.snake[0]['y']+1 == self.board['height']))
+		
+		obstacle_to_the_left =  ((self.direction == self.dirs['right'] and self.snake[0]['y']-1 == 0)
+			or (self.direction == self.dirs['left'] and self.snake[0]['y']+1 == self.board['height'])
+			or (self.direction == self.dirs['up'] and self.snake[0]['x']-1 == 0)
+			or (self.direction == self.dirs['down'] and self.snake[0]['x']+1 == self.board['width']-1))
+
+		obstacle_to_the_right = ((self.direction == self.dirs['right'] and self.snake[0]['y']+1 == self.board['height'])
+			or (self.direction == self.dirs['left'] and self.snake[0]['y']-1 == 0)
+			or (self.direction == self.dirs['up'] and self.snake[0]['x']+1 == self.board['width']-1)
+			or (self.direction == self.dirs['down'] and self.snake[0]['x']-1 == 0))
+
+		return (obstacle_ahead, obstacle_to_the_left, obstacle_to_the_right, self.score)
 
 class SnakeUI:
-	def __init__(self, state, keyboard='t', stdscr=None):
+	def __init__(self, state, keyboard='t', stdscr=None, debug='t'):
 		self.state = state
 		self.keyboard = keyboard
 		self.keypress = None
 		self.stdscr = curses.initscr()
 
-		self.window = curses.newwin(state.board['width'], state.board['height'], 0, 0)		
-		#self.window.timeout(200)
+		self.window = curses.newwin(self.state.board['height'], self.state.board['width'], 0, 0)		
+		self.window.nodelay(1)
+		if(self.keyboard == 't'):
+			self.window.keypad(1)
+		
+		self.debug = debug
+		self.debug_window = None
+		if(self.debug == 't'):
+			self.debug_window = curses.newwin(3, self.state.board['width'], self.state.board['height']+1, 0)
+			self.debug_window.nodelay(1)
 
 		curses.curs_set(0)
 		curses.noecho()
 		curses.cbreak()
 		curses.flushinp()
-
-		#if(self.keyboard):
-		self.window.nodelay(1)
-		if(keyboard == 't'):
-			self.window.keypad(1)
-			self.window.nodelay(True)
-		#wrapper(self.set_stdscr)
-		
 		self.render()
 
 	def render(self):
+		if(self.debug == 't'):
+			self.render_debug_window()
+		
 		self.window.clear()
 		self.window.border(0)
 		
-		#colocar score
 		for snake_part in self.state.snake:
 			self.window.addch(snake_part['y'], snake_part['x'], '*')
 
 		self.window.addstr(0, self.state.board['width']-5, str(self.state.score))
-
 		self.window.addch(self.state.food['y'], self.state.food['x'], 'A')
+		
 		self.keypress = self.window.getch()
 		curses.flushinp()
-		
 
 		if(self.keyboard == 't'):
-			if(self.keypress == 259):
-				self.state.set_direction(new_direction_str='up')
-			elif(self.keypress == curses.KEY_DOWN):
-				self.state.set_direction(new_direction_str='down')
-			elif(self.keypress == curses.KEY_RIGHT):
-				self.state.set_direction(new_direction_str='right')
-			elif(self.keypress == curses.KEY_LEFT):
-				self.state.set_direction(new_direction_str='left')
+			self.read_keyboard_input()
+	
+	def render_debug_window(self):
+		self.debug_window.clear()
+		self.debug_window.border(0)
+		game_info = self.state.get_game_info()
+		msg = 'fre {} esq{} dir {}'.format(game_info[0], game_info[1], game_info[2])
+		self.debug_window.addstr(1, 1, msg)
+		self.debug_window.refresh()
+
+	def read_keyboard_input(self):
+		if(self.keypress == curses.KEY_UP):
+			self.state.set_direction(new_direction_str='up')
+		elif(self.keypress == curses.KEY_DOWN):
+			self.state.set_direction(new_direction_str='down')
+		elif(self.keypress == curses.KEY_RIGHT):
+			self.state.set_direction(new_direction_str='right')
+		elif(self.keypress == curses.KEY_LEFT):
+			self.state.set_direction(new_direction_str='left')		
 
 	def kill_ui(self):
 		if(self.keyboard == 't'):
