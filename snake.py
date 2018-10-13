@@ -382,7 +382,7 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 		indivs = slnns_to_genotype(nns, scores)
 		new_gen = breed_new_gen(indivs)
 		nns = genotypes_to_slnns(new_gen, inp_size=3, out_size=3)
-
+		#asda
 	snake_ui.kill_ui()
 
 def game_loop(param_dir=None, update_freq=None, render_freq=None, bw=None, bh=None, 
