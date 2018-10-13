@@ -7,30 +7,20 @@ def threshold(net, treshold=0.0):
 def sigmoid(net, slope=1.0):
 	return 1/(1+exp(-net*slope))
 
-def piecewise(net, activ_params):
-	cutoff_x1 = activ_params[0]
-	cutoff_x2 = activ_params[1]
-	cutoff_x3 = activ_params[2]
-
-	if(net <= -1):
+def step(net):
+	if(net <= 0):
 		return 0
-	elif(net > -1 and net <= 0):
-		return 1	
-	elif(net > 0 and net <= 1):
-		return 2
-	return 3
+	elif(net > 0):
+		return 1
 
 class Perceptron:
-	def __init__(self, inp_size, activ_funct=piecewise, activ_params=None, weights=None):
-		self.activ_funct = activ_funct
+	def __init__(self, inp_size, activation=step, activ_params=None, weights=[]):
+		self.activation = activation
 
-		if(activ_params == None):
-			self.activ_params = np.random.uniform(-10.0, 10.0, 3)
-		else:
-			self.activ_params = activ_params
+		self.activ_params = None
 
-		if(weights == None):
-			self.weights = np.random.uniform(-10.0, 10.0, inp_size)
+		if(len(weights) == 0):
+			self.weights = np.random.uniform(-100.0, 100.0, inp_size)
 		else:
 			self.weights = weights
 
@@ -42,17 +32,99 @@ class Perceptron:
 		net = sum(list(map(lambda x, y: x*y, inp_data, self.weights)))
 		#print('net', net)
 		#aplica a funcao de ativacao
-		f_net = self.activ_funct(net, activ_params=self.activ_params)
+		f_net = self.activation(net)
 		return f_net
 
+	def to_genotype(self, score):
+		indiv = {}
+		indiv['features'] = self.weights
+		indiv['score'] = score
+		return indiv
+
+def perceptrons_to_genotype(perceptrons, scores):
+	population = []
+	for i in range(0, len(perceptrons)):
+		population.append(perceptrons[i].to_genotype(scores[i]))
+
+	return population
+
+def slnns_to_genotype(slnns, scores):
+	population = []
+	for i in range(0, len(slnns)):
+		population.append(slnns[i].to_genotype(scores[i]))
+	return population
+
+def genotypes_to_slnns(genotypes, inp_size, out_size):
+	nns = []
+	for indiv in genotypes:
+		nn = SingleLayerNN(inp_size=inp_size, out_size=out_size, weights=indiv['features'])
+		nns.append(nn)
+	return nns
+
+class SingleLayerNN:
+	def __init__(self, inp_size=3, out_size=2, activation=step, weights=[]):
+		self.ps = []
+		self.p_qtt = out_size
+
+		j = 0
+		for i in range(0, self.p_qtt):
+			p = None
+			if(len(weights) > 0):
+				#print('recebeu weights de parametro')
+				p_weights = []
+				while(len(p_weights) < inp_size):
+					#print('colocando peso',weights[j],'no perceptron')
+					p_weights.append(weights[j])
+					j = j+1
+				p = Perceptron(inp_size=inp_size, weights=p_weights)
+			else:
+				p= Perceptron(inp_size=inp_size)
+
+			self.ps.append(p)
+
+	def decide(self, inp_data):
+		out = []
+		for p in self.ps:
+			out.append(p.decide(inp_data))
+		return out
+
+	def to_genotype(self, score):
+		indiv = {}
+		indiv['features'] = []
+		for i in range(0, len(self.ps)):
+			for j in range(0, len(self.ps[i].weights)):
+				indiv['features'].append(self.ps[i].weights[j])
+		indiv['score'] = score
+		return indiv
+
+	def print(self):
+		for i in range(0, len(self.ps)):
+			print('perceptron',i,'weights', self.ps[i].weights)
+		return 0
+
 def main():
-	perceptron = Perceptron(inp_size=3)
-	test_info = np.random.uniform(-1.0, 1.0, 3)
-	print('weights', perceptron.weights)
-	print('activ_params', perceptron.activ_params)
-	print('test info', test_info)
-	decision = perceptron.decide(test_info)
-	print('decision', decision)
+	test_info = np.random.randint(0, 2, 3)
+	
+	scores = list(range(0,3))
+	print('scores', scores)
+
+	indivs = []
+	for i in range(0, 3):
+		sl_nn = SingleLayerNN(inp_size=4, out_size=3)
+	
+		#for j in range(0, sl_nn.p_qtt):
+			#print('slnn',i, 'p=',j,'weights', sl_nn.ps[j].weights)
+		
+		indiv = sl_nn.to_genotype(scores[i])
+		print('indiv', indiv)
+		indivs.append(indiv)
+	print('\n')
+	for i in range(0, 3):
+		print('individual from which a nn is being created')
+		print(indivs[i])
+		sl_nn = SingleLayerNN(inp_size=4, out_size=3, weights = indivs[i]['features'])
+		sl_nn.print()
+
 	return 0
 
 #main()
