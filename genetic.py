@@ -63,7 +63,7 @@ def roulette(indivs):
 def mutate(indiv):
 	mutation_chance = np.random.uniform(0, 1)
 	#print('mutation chance', mutation_chance)
-	if(mutation_chance <= 0.2):
+	if(mutation_chance <= 0.4):
 		#print('will mutate')
 		mutation_index = np.random.randint(0,len(indiv['features']))
 		#print('mutation index', mutation_index)
@@ -77,7 +77,7 @@ def mutate(indiv):
 			indiv['features'][mutation_index] = indiv['features'][mutation_index]/4
 		else:
 			#print('mutation type sign change')
-			indiv['features'][mutation_index] = indiv['features'][mutation_index]*(-1)
+			indiv['features'][mutation_index] = np.random.uniform(-50, 50)
 		#print('new value', indiv['features'][mutation_index])
 
 	print('\n')

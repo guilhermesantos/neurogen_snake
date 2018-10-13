@@ -5,13 +5,17 @@ def threshold(net, treshold=0.0):
 	return 1 if net >= treshold else 0
 
 def sigmoid(net, slope=1.0):
-	return 1/(1+exp(-net*slope))
+	np.seterr('ignore')
+	return 1/(1+np.exp(-net*slope))
 
 def step(net):
 	if(net <= 0):
 		return 0
 	elif(net > 0):
 		return 1
+
+def linear(net, slope=1.0):
+	return net
 
 class Perceptron:
 	def __init__(self, inp_size, activation=step, activ_params=None, weights=[]):
@@ -54,10 +58,11 @@ def slnns_to_genotype(slnns, scores):
 		population.append(slnns[i].to_genotype(scores[i]))
 	return population
 
-def genotypes_to_slnns(genotypes, inp_size, out_size):
+def genotypes_to_slnns(genotypes, inp_size, out_size, activation=linear):
 	nns = []
 	for indiv in genotypes:
-		nn = SingleLayerNN(inp_size=inp_size, out_size=out_size, weights=indiv['features'])
+		nn = SingleLayerNN(inp_size=inp_size, out_size=out_size, weights=indiv['features'], 
+			activation=activation)
 		nns.append(nn)
 	return nns
 
@@ -76,9 +81,9 @@ class SingleLayerNN:
 					#print('colocando peso',weights[j],'no perceptron')
 					p_weights.append(weights[j])
 					j = j+1
-				p = Perceptron(inp_size=inp_size, weights=p_weights)
+				p = Perceptron(inp_size=inp_size, weights=p_weights, activation=activation)
 			else:
-				p= Perceptron(inp_size=inp_size)
+				p= Perceptron(inp_size=inp_size, activation=activation)
 
 			self.ps.append(p)
 
@@ -110,21 +115,14 @@ def main():
 
 	indivs = []
 	for i in range(0, 3):
-		sl_nn = SingleLayerNN(inp_size=4, out_size=3)
-	
-		#for j in range(0, sl_nn.p_qtt):
-			#print('slnn',i, 'p=',j,'weights', sl_nn.ps[j].weights)
-		
-		indiv = sl_nn.to_genotype(scores[i])
-		print('indiv', indiv)
-		indivs.append(indiv)
-	print('\n')
-	for i in range(0, 3):
-		print('individual from which a nn is being created')
-		print(indivs[i])
-		sl_nn = SingleLayerNN(inp_size=4, out_size=3, weights = indivs[i]['features'])
-		sl_nn.print()
+		sl_nn = SingleLayerNN(inp_size=4, out_size=3, activation=linear)
+		for j in range(0, sl_nn.p_qtt):
+			print('slnn',i, 'p=',j,'weights', sl_nn.ps[j].weights)
+		random_data = np.random.uniform(-10, 10, 4)
+		print('random data to be input into the NN', random_data)
+		print('nn decision', sl_nn.decide(random_data))
+		print('\n')
 
 	return 0
 
-#main()
+main()

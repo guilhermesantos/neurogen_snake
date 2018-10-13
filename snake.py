@@ -36,10 +36,11 @@ class SnakeState:
 		self.steering_type = steering_type
 		self.food = {}
 		self.num = 0
-		self.score = 0
+		self.score = 50
 		self.game_state = GameState.PLAYING
 		self.board = {'width': bw, 'height': bh}
 		self.snake = []
+		self.size = 3
 
 		starting_x = int(np.random.uniform(5,bw-5))
 		starting_y = int(np.random.uniform(5,bh-5))
@@ -87,6 +88,7 @@ class SnakeState:
 		elif(self.direction == Direction.RIGHT):
 			new_part['x'] -= 1
 		self.snake.append(new_part)
+		self.size += 1
 		self.create_food()
 
 	def collision_detection(self):
@@ -149,7 +151,7 @@ class SnakeState:
 
 	def step(self):
 		if(self.game_state == GameState.PLAYING):
-			self.score += 1
+			self.score -= 1
 			new_part = {}
 			new_part['x'] = self.snake[0]['x']
 			new_part['y'] = self.snake[0]['y']
@@ -165,6 +167,8 @@ class SnakeState:
 			removed_part = self.snake.pop()#tira ultimo ponto da cobra
 			self.snake.insert(0, new_part)#cria novo ponto da cobra no comeco
 			self.collision_detection()
+			if(self.score < 0):
+				self.game_state = GameState.GAME_OVER
 
 	def get_game_info(self):
 		obstacle_ahead = ((self.direction == Direction.RIGHT and self.snake[0]['x']+1 == self.board['width']-1)
@@ -182,15 +186,41 @@ class SnakeState:
 			or (self.direction == Direction.UP and self.snake[0]['x']+1 == self.board['width']-1)
 			or (self.direction == Direction.DOWN and self.snake[0]['x']-1 == 0))
 
-		return (obstacle_ahead, obstacle_to_the_left, obstacle_to_the_right)
+		food_to_the_left = ((self.direction == Direction.RIGHT and self.snake[0]['y'] > self.food['y'])
+			or (self.direction == Direction.LEFT and self.snake[0]['y'] < self.food['y'])
+			or (self.direction == Direction.UP and self.snake[0]['x'] > self.food['x'])
+			or (self.direction == Direction.DOWN and self.snake[0]['x'] < self.food['x']))
 
-class snake_nn_input:	
-	def read_input():
-		return 0
+		food_to_the_right = ((self.direction == Direction.RIGHT and self.snake[0]['y'] < self.food['y'])
+			or (self.direction == Direction.LEFT and self.snake[0]['y'] > self.food['y'])
+			or (self.direction == Direction.UP and self.snake[0]['x'] < self.food['x'])
+			or (self.direction == Direction.DOWN and self.snake[0]['x'] > self.food['x']))
 
-class snake_kb_input:
-	def read_input():
-		return 0
+		return (obstacle_ahead, obstacle_to_the_left, obstacle_to_the_right, 
+			food_to_the_left, food_to_the_right)
+
+#class snake_nn_input:	
+#	def read_input(self, state):
+#		game_info = state.get_game_info()
+#		parsed_nn_decision = self.parse_nn_decision(self.nn.decide(game_info))
+#		self.state.set_direction(new_direction=parsed_nn_decision)
+#		return 0
+
+#	def parse_nn_decision(self, decision):
+#		chosen = decision.index(max(decision))
+#		return Direction(chosen)
+
+#class snake_kb_input:
+#	def read_game_input():
+#		if(self.keypress == curses.KEY_UP):
+#			self.state.set_direction(Direction.UP)
+#		elif(self.keypress == curses.KEY_DOWN):
+#			self.state.set_direction(Direction.DOWN)
+#		elif(self.keypress == curses.KEY_RIGHT):
+#			self.state.set_direction(Direction.RIGHT)
+#		elif(self.keypress == curses.KEY_LEFT):
+#			self.state.set_direction(Direction.LEFT)
+#		return 0
 
 class SnakeUI:
 	def __init__(self, snake_state=None, nn=None, stdscr=None, debug='t', bh=20, bw=20,
@@ -218,16 +248,13 @@ class SnakeUI:
 		self.debug_window = None
 		self.debug_message = None
 		if(self.debug == 't'):
-			self.debug_window = curses.newwin(500, 100, 
-				bh+1, 0)
+			self.debug_window = curses.newwin(500, 100, bh+1, 0)
 			self.debug_window.nodelay(1)
 			self.debug_msg = ''
 
 		curses.curs_set(0)
 		curses.noecho()
 		curses.cbreak()
-		#self.render()
-		self.dec = 0
 
 	def start_game(self, nn=None):
 		self.state = SnakeState(param_dir=Direction.DOWN, bw=self.bw, bh=self.bh, 
@@ -253,9 +280,8 @@ class SnakeUI:
 		
 		if(self.state.game_state == GameState.PLAYING):
 			game_info = self.state.get_game_info()
-			#self.debug_msg = 'playing'
-		elif(self.state.game_state == GameState.GAME_OVER):
-			self.debug_msg = 'dead. up to quit, down to restart'
+		#elif(self.state.game_state == GameState.GAME_OVER):
+		#	self.debug_msg = 'dead. up to restart, down to quit'
 
 		self.read_keyboard_input()
 
@@ -263,18 +289,13 @@ class SnakeUI:
 			self.read_nn_input()
 
 	def read_nn_input(self):
-		#self.debug_msg += 'dec {}'.format(str(self.dec))
 		game_info = self.state.get_game_info()
-		nn_decision = self.nn.decide(game_info)
-		#self.debug_msg += '={}'.format(str(nn_decision))
-		self.dec += 1
-		parsed_nn_decision = self.parse_nn_decision(nn_decision)
-		self.state.set_direction(new_direction=parsed_nn_decision)
+		nn_output = self.nn.decide(game_info)
+		#self.debug_msg += 'nn_output '+str(nn_output)
+		chosen_direction = nn_output.index(max(nn_output))
+		#self.debug_msg += 'chosen'+str(chosen_direction)+'\n'
+		self.state.set_direction(new_direction=Direction(chosen_direction))
 		return 0
-
-	def parse_nn_decision(self, decision):
-		chosen = decision.index(max(decision))
-		return Direction(chosen)
 
 	def render_debug_window(self):
 		self.debug_window.clear()
@@ -288,9 +309,9 @@ class SnakeUI:
 		if(self.input == InputMode.KEYBOARD):
 			if(self.state.game_state == GameState.GAME_OVER):
 				if(self.keypress == curses.KEY_UP):
-					self.state.end_game()
+					self.start_game()
 				if(self.keypress == curses.KEY_DOWN):
-					self.restart_game()
+					self.state.end_game()
 			else:
 				if(self.keypress == curses.KEY_UP):
 					self.state.set_direction(Direction.UP)
@@ -311,15 +332,6 @@ class SnakeUI:
 		curses.echo()
 		curses.endwin()
 
-	def restart_game(self, perceptron=None):
-		self.state = SnakeState(param_dir=Direction.RIGHT, bh=self.bh, 
-			bw=self.bw)
-		if(perceptron != None):
-			self.perceptron = perceptron
-			self.input = InputMode.NEURAL_NET
-		else:
-			self.input = InputMode.KEYBOARD
-
 def init_perceptrons(qtt, inp_size):
 	perceptrons = []
 	for i in range(0, qtt):
@@ -330,7 +342,7 @@ def init_perceptrons(qtt, inp_size):
 def init_nns(qtt, inp_size, out_size):
 	nns = []
 	for nn in range(0, qtt):
-		nn = SingleLayerNN(inp_size=inp_size, out_size=out_size)
+		nn = SingleLayerNN(inp_size=inp_size, out_size=out_size, activation=linear)
 		nns.append(nn)
 	return nns
 
@@ -348,7 +360,9 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 	if(bh == None):
 		bh = 20
 
-	nns = init_nns(qtt=5, inp_size=3, out_size=3)
+	inp_size = 5
+	out_size = 3
+	nns = init_nns(qtt=5, inp_size=inp_size, out_size=out_size)
 
 	time_between_updates = 1/update_freq
 	time_between_renders = 1/render_freq
@@ -362,7 +376,6 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 		scores = []
 		for nn in nns:
 			snake_ui.start_game(nn)
-			#snake_ui.debug_msg = 'geracao {}'.format(str(generation))
 			
 			while(snake_ui.state.game_state != GameState.GAME_OVER):
 				current_time = time.time()
@@ -374,15 +387,16 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 					snake_ui.render()
 					last_render_time = time.time()
 
-			scores.append(snake_ui.state.score)
+			scores.append(snake_ui.state.size)
 		
 		if(max(scores)>best_score):
 			best_score = max(scores)
-		
+
+		snake_ui.debug_msg = 'best {} gen {}'.format(str(best_score), str(generation))
 		indivs = slnns_to_genotype(nns, scores)
 		new_gen = breed_new_gen(indivs)
-		nns = genotypes_to_slnns(new_gen, inp_size=3, out_size=3)
-		#asda
+		nns = genotypes_to_slnns(new_gen, inp_size=inp_size, out_size=out_size)
+
 	snake_ui.kill_ui()
 
 def game_loop(param_dir=None, update_freq=None, render_freq=None, bw=None, bh=None, 
