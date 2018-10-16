@@ -62,25 +62,14 @@ def roulette(indivs):
 
 def mutate(indiv):
 	mutation_chance = np.random.uniform(0, 1)
-	#print('mutation chance', mutation_chance)
+	
 	if(mutation_chance <= 0.4):
-		#print('will mutate')
-		mutation_index = np.random.randint(0,len(indiv['features']))
-		#print('mutation index', mutation_index)
-		mutation_type = 2
-		#print('original value', indiv['features'][mutation_index])
-		if(mutation_type == 0):
-			#print('mutation type multiplic')
-			indiv['features'][mutation_index] = indiv['features'][mutation_index]*4
-		elif(mutation_type == 1):
-			#print('mutation type division')
-			indiv['features'][mutation_index] = indiv['features'][mutation_index]/4
-		else:
-			#print('mutation type sign change')
+		mutation_quantity = np.random.randint(1,len(indiv['features']))
+		mutation_indexes = np.random.randint(0,len(indiv['features']), mutation_quantity-1)
+		
+		#Se nao der certo, voltar fazendo a mutacao de um unico gene por vez 
+		for mutation_index in mutation_indexes:
 			indiv['features'][mutation_index] = np.random.uniform(-50, 50)
-		#print('new value', indiv['features'][mutation_index])
-
-	print('\n')
 
 	return indiv
 

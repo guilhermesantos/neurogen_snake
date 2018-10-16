@@ -36,11 +36,12 @@ class SnakeState:
 		self.steering_type = steering_type
 		self.food = {}
 		self.num = 0
-		self.score = 50
+		self.hunger = 50
 		self.game_state = GameState.PLAYING
 		self.board = {'width': bw, 'height': bh}
 		self.snake = []
 		self.size = 3
+		self.time_alive = 0
 
 		starting_x = int(np.random.uniform(5,bw-5))
 		starting_y = int(np.random.uniform(5,bh-5))
@@ -76,6 +77,7 @@ class SnakeState:
 		return 0
 
 	def grow_snake(self):
+		self.hunger += 30
 		new_part = {}
 		new_part['x'] = self.snake[-1]['x']
 		new_part['y'] = self.snake[-1]['y']
@@ -94,7 +96,6 @@ class SnakeState:
 	def collision_detection(self):
 		if(self.snake[0]['x'] == self.food['x'] and self.snake[0]['y'] == self.food['y']):
 			self.grow_snake()
-			self.score += 10
 		elif(self.snake[0]['x'] == 0 or self.snake[0]['x'] == self.board['width']-1):
 			#colisao em x
 			self.game_state = GameState.GAME_OVER
@@ -151,7 +152,8 @@ class SnakeState:
 
 	def step(self):
 		if(self.game_state == GameState.PLAYING):
-			self.score -= 1
+			self.time_alive += 1
+			self.hunger -= 1
 			new_part = {}
 			new_part['x'] = self.snake[0]['x']
 			new_part['y'] = self.snake[0]['y']
@@ -167,7 +169,7 @@ class SnakeState:
 			removed_part = self.snake.pop()#tira ultimo ponto da cobra
 			self.snake.insert(0, new_part)#cria novo ponto da cobra no comeco
 			self.collision_detection()
-			if(self.score < 0):
+			if(self.hunger < 0):
 				self.game_state = GameState.GAME_OVER
 
 	def get_game_info(self):
@@ -276,7 +278,7 @@ class SnakeUI:
 		for snake_part in self.state.snake:
 			self.window.addch(snake_part['y'], snake_part['x'], '*')
 		self.window.addch(self.state.food['y'], self.state.food['x'], 'A')
-		self.window.addstr(0, self.state.board['width']-5, str(self.state.score))
+		self.window.addstr(0, self.state.board['width']-5, str(self.state.hunger))
 		
 		if(self.state.game_state == GameState.PLAYING):
 			game_info = self.state.get_game_info()
@@ -291,9 +293,7 @@ class SnakeUI:
 	def read_nn_input(self):
 		game_info = self.state.get_game_info()
 		nn_output = self.nn.decide(game_info)
-		#self.debug_msg += 'nn_output '+str(nn_output)
 		chosen_direction = nn_output.index(max(nn_output))
-		#self.debug_msg += 'chosen'+str(chosen_direction)+'\n'
 		self.state.set_direction(new_direction=Direction(chosen_direction))
 		return 0
 
@@ -320,7 +320,13 @@ class SnakeUI:
 				elif(self.keypress == curses.KEY_RIGHT):
 					self.state.set_direction(Direction.RIGHT)
 				elif(self.keypress == curses.KEY_LEFT):
-					self.state.set_direction(Direction.LEFT)		
+					self.state.set_direction(Direction.LEFT)
+		else:
+			if(self.keypress == curses.KEY_DOWN):
+				self.state.end_game()
+				self.kill_ui()
+				exit()
+	
 				
 	def get_snake_state(self):
 		return self.state
@@ -371,9 +377,11 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 	last_render_time = time.time()
 
 	snake_ui = SnakeUI(snake_state=None, steering_type=steering_type, bw=bw, bh=bh)
-	best_score = 0
-	for generation in range(0, 5000):
+	best_size = 0
+	generation = 0
+	while(generation < 5000 and (snake_ui.state == None or snake_ui.state.game_state != GameState.CLOSING)):
 		scores = []
+		sizes = []
 		for nn in nns:
 			snake_ui.start_game(nn)
 			
@@ -387,17 +395,19 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 					snake_ui.render()
 					last_render_time = time.time()
 
-			scores.append(snake_ui.state.size)
+			scores.append(snake_ui.state.size*snake_ui.state.time_alive)
+			sizes.append(snake_ui.state.size)
 		
-		if(max(scores)>best_score):
-			best_score = max(scores)
+		if(max(sizes)>best_size):
+			best_size = max(sizes)
 
-		snake_ui.debug_msg = 'best {} gen {}'.format(str(best_score), str(generation))
+		snake_ui.debug_msg = 'best {} gen {}'.format(str(best_size), str(generation))
 		indivs = slnns_to_genotype(nns, scores)
 		new_gen = breed_new_gen(indivs)
 		nns = genotypes_to_slnns(new_gen, inp_size=inp_size, out_size=out_size)
+		generation += 1
 
-	snake_ui.kill_ui()
+	return 0
 
 def game_loop(param_dir=None, update_freq=None, render_freq=None, bw=None, bh=None, 
 	steering_type=SteeringType.ABSOLUTE):
@@ -459,7 +469,6 @@ def parse_cl_args():
 			args['st'] = SteeringType.RELATIVE
 		elif(arguments[i] == '-as'):
 			args['st'] = SteeringType.ABSOLUTE
-	#IMPLEMENTAR ARG BW E BH
 
 	if('dir' not in args.keys()):
 		args['dir'] = None
