@@ -34,12 +34,12 @@ class SnakeState:
 	def __init__(self, bw=20, bh = 20, param_dir=Direction.DOWN, steering_type=SteeringType.ABSOLUTE):
 		self.direction = param_dir
 		self.steering_type = steering_type
-		self.food = {}
+		self.food = [0,0]
 		self.num = 0
 		self.hunger = 50
 		self.game_state = GameState.PLAYING
 		self.board = {'width': bw, 'height': bh}
-		self.snake = []
+		self.parts = []
 		self.size = 3
 		self.time_alive = 0
 
@@ -47,21 +47,21 @@ class SnakeState:
 		starting_y = int(np.random.uniform(5,bh-5))
 
 		for i in range(0,3):
-			part = {}
+			part = [0,0]
 			if(self.direction == Direction.UP):
-				part['x'] = starting_x
-				part['y'] = starting_y+i
+				part[0] = starting_x
+				part[1] = starting_y+i
 			elif(self.direction == Direction.DOWN):
-				part['x'] = starting_x
-				part['y'] = starting_y-i
+				part[0] = starting_x
+				part[1] = starting_y-i
 			elif(self.direction == Direction.LEFT):
-				part['x'] = starting_x+i
-				part['y'] = starting_y
+				part[0] = starting_x+i
+				part[1] = starting_y
 			elif(self.direction == Direction.RIGHT):
-				part['x'] = starting_x-i
-				part['y'] = starting_y
+				part[0] = starting_x-i
+				part[1] = starting_y
 
-			self.snake.append(part)
+			self.parts.append(part)
 
 		self.create_food()
 
@@ -72,43 +72,43 @@ class SnakeState:
 		self.game_state = GameState.CLOSING
 
 	def create_food(self):
-		self.food['x'] = randint(1, self.board['width']-2)
-		self.food['y'] = randint(1, self.board['height']-2)
+		self.food[0] = randint(1, self.board['width']-2)
+		self.food[1] = randint(1, self.board['height']-2)
+		while(self.food in self.parts):
+			self.food[0] = randint(1, self.board['width']-2)
+			self.food[1] = randint(1, self.board['height']-2)
 		return 0
 
 	def grow_snake(self):
 		self.hunger += 30
-		new_part = {}
-		new_part['x'] = self.snake[-1]['x']
-		new_part['y'] = self.snake[-1]['y']
+		new_part = [0,0]
+		new_part[0] = self.parts[-1][0]
+		new_part[1] = self.parts[-1][1]
 		if(self.direction == Direction.UP):
-			new_part['y'] += 1
+			new_part[1] += 1
 		elif(self.direction == Direction.DOWN):
-			new_part['y'] -= 1
+			new_part[1] -= 1
 		elif(self.direction == Direction.LEFT):
-			new_part['x'] += 1
+			new_part[0] += 1
 		elif(self.direction == Direction.RIGHT):
-			new_part['x'] -= 1
-		self.snake.append(new_part)
+			new_part[0] -= 1
+		self.parts.append(new_part)
 		self.size += 1
 		self.create_food()
 
 	def collision_detection(self):
-		if(self.snake[0]['x'] == self.food['x'] and self.snake[0]['y'] == self.food['y']):
+		if(self.parts[0] == self.food):
 			self.grow_snake()
-		elif(self.snake[0]['x'] == 0 or self.snake[0]['x'] == self.board['width']-1):
+		elif(self.parts[0][0] == 0 or self.parts[0][0] == self.board['width']-1):
 			#colisao em x
 			self.game_state = GameState.GAME_OVER
-		elif(self.snake[0]['y'] == 0 or self.snake[0]['y'] == self.board['height']):
+		elif(self.parts[0][1] == 0 or self.parts[0][1] == self.board['height']):
 			#colisao em y
 			self.game_state = GameState.GAME_OVER
 		else:
 			i = 1
-			while(i < len(self.snake)):
-				if(self.snake[0]['x'] == self.snake[i]['x'] and
-					self.snake[0]['y'] == self.snake[i]['y']):
-					self.game_state = GameState.GAME_OVER
-				i = i+1
+			if(self.parts[0] in self.parts[1:]):
+				self.game_state = GameState.GAME_OVER
 
 	def set_direction(self, new_direction):
 		if(self.game_state == GameState.PLAYING):
@@ -154,79 +154,77 @@ class SnakeState:
 		if(self.game_state == GameState.PLAYING):
 			self.time_alive += 1
 			self.hunger -= 1
-			new_part = {}
-			new_part['x'] = self.snake[0]['x']
-			new_part['y'] = self.snake[0]['y']
+			new_part = [0,0]
+			new_part[0] = self.parts[0][0]
+			new_part[1] = self.parts[0][1]
 			if(self.direction == Direction.UP):
-				new_part['y'] = new_part['y']-1
+				new_part[1] = new_part[1]-1
 			elif(self.direction == Direction.DOWN):
-				new_part['y'] = new_part['y']+1
+				new_part[1] = new_part[1]+1
 			elif(self.direction == Direction.LEFT):
-				new_part['x'] = new_part['x']-1
+				new_part[0] = new_part[0]-1
 			elif(self.direction == Direction.RIGHT):
-				new_part['x'] = new_part['x']+1
+				new_part[0] = new_part[0]+1
 
-			removed_part = self.snake.pop()#tira ultimo ponto da cobra
-			self.snake.insert(0, new_part)#cria novo ponto da cobra no comeco
+			removed_part = self.parts.pop()#tira ultimo ponto da cobra
+			self.parts.insert(0, new_part)#cria novo ponto da cobra no comeco
 			self.collision_detection()
 			if(self.hunger < 0):
 				self.game_state = GameState.GAME_OVER
 
+	def score(self):
+		return self.size*self.size*self.time_alive
+
 	def get_game_info(self):
-		obstacle_ahead = ((self.direction == Direction.RIGHT and self.snake[0]['x']+1 == self.board['width']-1)
-			or (self.direction == Direction.LEFT and self.snake[0]['x']-1 == 0) 
-			or (self.direction == Direction.UP and self.snake[0]['y']-1 == 0)
-			or (self.direction == Direction.DOWN and self.snake[0]['y']+1 == self.board['height']))
-		
-		obstacle_to_the_left =  ((self.direction == Direction.RIGHT and self.snake[0]['y']-1 == 0)
-			or (self.direction == Direction.LEFT and self.snake[0]['y']+1 == self.board['height'])
-			or (self.direction == Direction.UP and self.snake[0]['x']-1 == 0)
-			or (self.direction == Direction.DOWN and self.snake[0]['x']+1 == self.board['width']-1))
+		head = self.parts[0]
+		obstacle_ahead = (
+			(self.direction == Direction.RIGHT and (head[0]+1 == self.board['width']-1 or [head[0]+1, head[1]] in self.parts))
+			or (self.direction == Direction.LEFT and (head[0]-1 == 0 or [head[0]-1, head[1]] in self.parts)) 
+			or (self.direction == Direction.UP and (head[1]-1 == 0 or [head[0], head[1]-1] in self.parts))
+			or (self.direction == Direction.DOWN and (head[1]+1 == self.board['height'] or [head[0],head[1]+1] in self.parts)))
 
-		obstacle_to_the_right = ((self.direction == Direction.RIGHT and self.snake[0]['y']+1 == self.board['height'])
-			or (self.direction == Direction.LEFT and self.snake[0]['y']-1 == 0)
-			or (self.direction == Direction.UP and self.snake[0]['x']+1 == self.board['width']-1)
-			or (self.direction == Direction.DOWN and self.snake[0]['x']-1 == 0))
 
-		food_to_the_left = ((self.direction == Direction.RIGHT and self.snake[0]['y'] > self.food['y'])
-			or (self.direction == Direction.LEFT and self.snake[0]['y'] < self.food['y'])
-			or (self.direction == Direction.UP and self.snake[0]['x'] > self.food['x'])
-			or (self.direction == Direction.DOWN and self.snake[0]['x'] < self.food['x']))
+		obstacle_to_the_left =  (
+			(self.direction == Direction.RIGHT and (head[1]-1 == 0 or [head[0],head[1]-1] in self.parts))
+			or (self.direction == Direction.LEFT and (head[1]+1 == self.board['height'] or [head[0],head[1]+1] in self.parts))
+			or (self.direction == Direction.UP and (head[0]-1 == 0 or [head[0]-1,head[1]] in self.parts))
+			or (self.direction == Direction.DOWN and (head[0]+1 == self.board['width']-1 or [head[0]+1,head[1]] in self.parts)))
 
-		food_to_the_right = ((self.direction == Direction.RIGHT and self.snake[0]['y'] < self.food['y'])
-			or (self.direction == Direction.LEFT and self.snake[0]['y'] > self.food['y'])
-			or (self.direction == Direction.UP and self.snake[0]['x'] < self.food['x'])
-			or (self.direction == Direction.DOWN and self.snake[0]['x'] > self.food['x']))
+		obstacle_to_the_right = (
+			(self.direction == Direction.RIGHT and (head[1]+1 == self.board['height'] or [head[0],head[1]+1] in self.parts))
+			or (self.direction == Direction.LEFT and (head[1]-1 == 0 or [head[0],head[1]-1] in self.parts))
+			or (self.direction == Direction.UP and (head[0]+1 == self.board['width']-1 or [head[0]+1,head[1]] in self.parts))
+			or (self.direction == Direction.DOWN and (head[0]-1 == 0 or [head[0]-1,head[1]] in self.parts)))
+
+		food_to_the_left = ((self.direction == Direction.RIGHT and head[1] > self.food[1])
+			or (self.direction == Direction.LEFT and head[1] < self.food[1])
+			or (self.direction == Direction.UP and head[0] > self.food[0])
+			or (self.direction == Direction.DOWN and head[0] < self.food[0]))
+
+		food_to_the_right = ((self.direction == Direction.RIGHT and head[1] < self.food[1])
+			or (self.direction == Direction.LEFT and head[1] > self.food[1])
+			or (self.direction == Direction.UP and head[0] < self.food[0])
+			or (self.direction == Direction.DOWN and head[0] > self.food[0]))
+
+		food_ahead = ((self.direction == Direction.RIGHT and head[0] < self.food[0])
+			or (self.direction == Direction.LEFT and head[0] > self.food[0])
+			or (self.direction == Direction.UP and head[1] > self.food[1])
+			or (self.direction == Direction.DOWN and head[1] < self.food[1]))
+
+		food_behind = ((self.direction == Direction.RIGHT and head[0] > self.food[0])
+			or (self.direction == Direction.LEFT and head[0] < self.food[0])
+			or (self.direction == Direction.UP and head[1] < self.food[1])
+			or (self.direction == Direction.DOWN and head[1] > self.food[1]))
 
 		return (obstacle_ahead, obstacle_to_the_left, obstacle_to_the_right, 
-			food_to_the_left, food_to_the_right)
-
-#class snake_nn_input:	
-#	def read_input(self, state):
-#		game_info = state.get_game_info()
-#		parsed_nn_decision = self.parse_nn_decision(self.nn.decide(game_info))
-#		self.state.set_direction(new_direction=parsed_nn_decision)
-#		return 0
-
-#	def parse_nn_decision(self, decision):
-#		chosen = decision.index(max(decision))
-#		return Direction(chosen)
-
-#class snake_kb_input:
-#	def read_game_input():
-#		if(self.keypress == curses.KEY_UP):
-#			self.state.set_direction(Direction.UP)
-#		elif(self.keypress == curses.KEY_DOWN):
-#			self.state.set_direction(Direction.DOWN)
-#		elif(self.keypress == curses.KEY_RIGHT):
-#			self.state.set_direction(Direction.RIGHT)
-#		elif(self.keypress == curses.KEY_LEFT):
-#			self.state.set_direction(Direction.LEFT)
-#		return 0
+			food_to_the_left, food_to_the_right, food_ahead, food_behind)
 
 class SnakeUI:
 	def __init__(self, snake_state=None, nn=None, stdscr=None, debug='t', bh=20, bw=20,
 		steering_type=SteeringType.ABSOLUTE):
+		self.update_freq = 300
+		self.render_freq = self.update_freq
+
 		self.steering_type = steering_type
 		self.state = snake_state
 		self.bh = bh
@@ -250,7 +248,7 @@ class SnakeUI:
 		self.debug_window = None
 		self.debug_message = None
 		if(self.debug == 't'):
-			self.debug_window = curses.newwin(500, 100, bh+1, 0)
+			self.debug_window = curses.newwin(5, 20, bh+1, 0)
 			self.debug_window.nodelay(1)
 			self.debug_msg = ''
 
@@ -275,9 +273,9 @@ class SnakeUI:
 		self.window.border(0)
 		
 		#Cobra, alimento e pontuacao
-		for snake_part in self.state.snake:
-			self.window.addch(snake_part['y'], snake_part['x'], '*')
-		self.window.addch(self.state.food['y'], self.state.food['x'], 'A')
+		for snake_part in self.state.parts:
+			self.window.addch(snake_part[1], snake_part[0], '*')
+		self.window.addch(self.state.food[1], self.state.food[0], 'A')
 		self.window.addstr(0, self.state.board['width']-5, str(self.state.hunger))
 		
 		if(self.state.game_state == GameState.PLAYING):
@@ -326,7 +324,13 @@ class SnakeUI:
 				self.state.end_game()
 				self.kill_ui()
 				exit()
-	
+			elif(self.keypress == curses.KEY_RIGHT):
+				self.update_freq += 25
+				self.render_freq = self.update_freq
+			elif(self.keypress == curses.KEY_LEFT):
+				if(self.update_freq - 25 > 0):
+					self.update_freq -= 25
+					self.render_freq = self.update_freq
 				
 	def get_snake_state(self):
 		return self.state
@@ -366,7 +370,12 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 	if(bh == None):
 		bh = 20
 
-	inp_size = 5
+
+	snake_ui = SnakeUI(snake_state=None, steering_type=steering_type, bw=bw, bh=bh)
+	best_size = 0
+	generation = 0
+
+	inp_size = 7
 	out_size = 3
 	nns = init_nns(qtt=5, inp_size=inp_size, out_size=out_size)
 
@@ -376,10 +385,8 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 	last_update_time = time.time()
 	last_render_time = time.time()
 
-	snake_ui = SnakeUI(snake_state=None, steering_type=steering_type, bw=bw, bh=bh)
-	best_size = 0
-	generation = 0
-	while(generation < 5000 and (snake_ui.state == None or snake_ui.state.game_state != GameState.CLOSING)):
+
+	while(generation < 500000 and (snake_ui.state == None or snake_ui.state.game_state != GameState.CLOSING)):
 		scores = []
 		sizes = []
 		for nn in nns:
@@ -387,15 +394,15 @@ def ai_game_loop(param_dir=Direction.DOWN, update_freq=10000, render_freq=10000,
 			
 			while(snake_ui.state.game_state != GameState.GAME_OVER):
 				current_time = time.time()
-				if(abs(current_time - last_update_time) > time_between_updates):
+				if(abs(current_time - last_update_time) > 1/snake_ui.update_freq):
 					snake_ui.state.step()
 					last_update_time = time.time()
 
-				if(abs(current_time - last_render_time) > time_between_renders):
+				if(abs(current_time - last_render_time) > 1/snake_ui.render_freq):
 					snake_ui.render()
 					last_render_time = time.time()
 
-			scores.append(snake_ui.state.size*snake_ui.state.time_alive)
+			scores.append(snake_ui.state.score())
 			sizes.append(snake_ui.state.size)
 		
 		if(max(sizes)>best_size):
