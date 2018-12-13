@@ -1,3 +1,12 @@
+#Autor: Guilherme Milan Santos 
+#Numero USP: 9012966
+#Instrucoes: executar python snake_game.py -nn
+#Utiliza python 3, curses, numpy e math
+#Para fechar, apertar a seta para baixo no teclado
+#Para entrar no modo invisivel (treina mais rapidamente), apertar a seta para cima no teclado
+#Para aumentar a velocidade no modo visivel, apertar a seta para a direita
+#para diminuir a velocidade no modo visivel. apertar a seta para a esquerda
+
 import numpy as np
 import math
 
@@ -19,12 +28,12 @@ def linear(net, slope=1.0):
 
 class Perceptron:
 	def __init__(self, inp_size, activation=step, activ_params=None, weights=[]):
-		self.activation = activation
+		self.activation = step
 
 		self.activ_params = None
 
 		if(len(weights) == 0):
-			self.weights = np.random.uniform(-100.0, 100.0, inp_size)
+			self.weights = np.random.randint(low=-10, high=10, size=inp_size)
 		else:
 			self.weights = weights
 
